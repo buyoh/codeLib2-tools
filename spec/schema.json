@@ -1,0 +1,95 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Title of the document"
+    },
+    "overview": {
+      "type": "string",
+      "description": "Overview of the content"
+    },
+    "code": {
+      "type": "string",
+      "description": "Code snippet"
+    },
+    "lang": {
+      "type": "string",
+      "description": "Programming language of the code",
+      "enum": ["cpp", "ruby", "rust", "javascript", "typescript"]
+    },
+    "path": {
+      "type": "string",
+      "description": "File path of the code"
+    },
+    "require": {
+      "type": "string",
+      "description": "Required modules or dependencies"
+    },
+    "references": {
+      "type": "array",
+      "description": "List of reference URLs",
+      "items": {
+        "type": "string",
+        "format": "uri"
+      }
+    },
+    "words": {
+      "type": "array",
+      "description": "List of search words",
+      "items": {
+        "type": "string"
+      }
+    },
+    "verified": {
+      "type": "array",
+      "description": "Verification status",
+      "items": {
+        "type": "string"
+      }
+    },
+    "commits": {
+      "type": "array",
+      "description": "List of commits",
+      "items": {
+        "type": "object",
+        "properties": {
+          "sha": {
+            "type": "string",
+            "description": "SHA hash of the commit"
+          },
+          "date": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Date of the commit"
+          },
+          "message": {
+            "type": "string",
+            "description": "Commit message"
+          }
+        },
+        "required": ["sha", "date", "message"]
+      }
+    },
+    "tested_by": {
+      "type": "array",
+      "description": "List of test scripts",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "title",
+    "overview",
+    "code",
+    "lang",
+    "path",
+    "references",
+    "words",
+    "verified",
+    "commits",
+    "tested_by"
+  ]
+}

@@ -1,0 +1,10 @@
+[package]
+name = "codeLib2-tools"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+clap = { version = "4.5.4", features = ["derive"] }
+
+[build-dependencies]
+schemafy = "0.6.0"
