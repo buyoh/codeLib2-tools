@@ -1,3 +1,5 @@
+use std::fs::File;
+
 use clap::Parser;
 
 #[derive(Parser, Debug)]
@@ -28,7 +30,8 @@ fn main() {
     //     println!("{:?}", codelib);
     // }
     let article_path = args.filepath;
-    let article = codelib2_tools::parse_document_from_file(&article_path);
+    let file = File::open(article_path).expect("Failed to open file");
+    let article = codelib2_tools::parse_document_from_file(file, "rust".to_string(), article_path);
 
     // print article
     println!("{:?}", article);

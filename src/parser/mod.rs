@@ -141,7 +141,7 @@ impl ParserInternalState {
         Ok(())
     }
 
-    fn generate_article(self) -> Article {
+    fn generate_article(self, path: String, lang: String) -> Article {
         Article {
             title: self
                 .collected_sections
@@ -154,8 +154,8 @@ impl ParserInternalState {
                 .unwrap_or(&String::new())
                 .clone(),
             code: self.collected_code,
-            lang: "rust".to_string(),
-            path: "unknown".to_string(),
+            lang,
+            path,
             require: self
                 .collected_sections
                 .get(&SectionAnchor::Require)
@@ -182,8 +182,7 @@ impl ParserInternalState {
 
 }
 
-pub fn parse_document_from_file(path: &str) -> Result<Article, String> {
-    let file = File::open(path).expect("Failed to open file");
+pub fn parse_document_from_file(file: File, article_path: String, lang: String) -> Result<Article, String> {
     let reader = BufReader::new(file);
 
     let mut parser_state = ParserInternalState::new();
@@ -197,5 +196,5 @@ pub fn parse_document_from_file(path: &str) -> Result<Article, String> {
     }
     parser_state.finish_anchor();
 
-    Ok(parser_state.generate_article())
+    Ok(parser_state.generate_article(article_path, lang))
 }
