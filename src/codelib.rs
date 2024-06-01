@@ -1,9 +1,9 @@
 
 #[derive(Debug, serde::Deserialize, serde::Serialize)]
 pub struct Commit {
-  sha: String,
-  date: String,
-  message: String,
+  pub sha: String,
+  pub date: String,
+  pub message: String,
 }
 
 #[derive(Debug, serde::Deserialize, serde::Serialize)]
