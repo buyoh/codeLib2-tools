@@ -1,0 +1,19 @@
+{
+  "lang": "cpp",
+  "path": "/src/cpp/container/likermq/rmq_sparsetable.hpp",
+  "commits": [
+    {
+      "sha": "1703cfd5937491aed191816ef0f1d37908630f24",
+      "date": "2020-06-28 03:09:01 +0900",
+      "message": "Add include guard and Modify document formats (#64)"
+    },
+    {
+      "sha": "ece0b45f2a0f37c91fece075aebbcf5b39cfd902",
+      "date": "2020-06-24 00:23:28 +0900",
+      "message": "rename cpp to hpp (#62)"
+    }
+  ],
+  "tested_by": [
+
+  ]
+}

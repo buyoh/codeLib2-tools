@@ -1,7 +1,10 @@
+use crate::codelib::Commit;
 use crate::Article;
 use std::collections::BTreeMap;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
+
+mod parser_snapshot_unittest;
 
 fn match_line_as_comment(line: &str) -> Option<&str> {
     // 先頭が # で始まる行なら、先頭の # と後続するスペースを取り除いた文字列を返す
@@ -70,6 +73,7 @@ struct ParserInternalState {
     parsing_text: String,
     collected_sections: BTreeMap<SectionAnchor, String>,
     collected_code: String,
+    section_codeblock: bool,
 }
 
 impl ParserInternalState {
@@ -80,15 +84,18 @@ impl ParserInternalState {
             parsing_text: String::new(),
             collected_sections: BTreeMap::new(),
             collected_code: String::new(),
+            section_codeblock: false,
         }
     }
 
     fn finish_anchor(&mut self) {
         if let Some(section) = std::mem::replace(&mut self.section_anchor, None) {
+            let trimmed_text = self.parsing_text.trim();
             self.collected_sections.insert(
                 section,
-                std::mem::replace(&mut self.parsing_text, String::new()),
+                trimmed_text.to_string(), // no way to avoid clone here
             );
+            self.parsing_text = String::new();
         }
         self.section_anchor = None;
         self.parsing_text.clear();
@@ -130,18 +137,36 @@ impl ParserInternalState {
                         self.section_anchor = Some(SectionAnchor::Unknown(anchor.to_string()));
                     }
                 }
+            } else if comment.starts_with("```") {
+                if self.section_codeblock {
+                    self.section_codeblock = false;
+                } else {
+                    self.section_codeblock = true;
+                }
             } else {
-                // Add to text
-                self.parsing_text.push_str(comment);
+                if self.section_codeblock {
+                    self.parsing_text.push_str(line);
+                    self.parsing_text.push_str("\n");
+                } else {
+                    self.parsing_text.push_str(comment);
+                    self.parsing_text.push_str("\n");
+                }
             }
         } else {
-            // Add code to text
-            self.collected_code.push_str(line);
+            if let Some(BlockAnchor::Code) = self.block_anchor {
+                self.collected_code.push_str(line);
+                self.collected_code.push_str("\n");
+            } else if self.section_codeblock {
+                self.parsing_text.push_str(line);
+                self.parsing_text.push_str("\n");
+            } else {
+                // ignore
+            }
         }
         Ok(())
     }
 
-    fn generate_article(self, path: String, lang: String) -> Article {
+    fn generate_article(self, path: String, lang: String, commits: Vec<Commit>, tested_by: Vec<String>) -> Article {
         Article {
             title: self
                 .collected_sections
@@ -153,7 +178,7 @@ impl ParserInternalState {
                 .get(&SectionAnchor::Overview)
                 .unwrap_or(&String::new())
                 .clone(),
-            code: self.collected_code,
+            code: self.collected_code.trim().to_string(),
             lang,
             path,
             require: self
@@ -175,14 +200,14 @@ impl ParserInternalState {
                 .get(&SectionAnchor::Verified)
                 .map(|s| s.split_whitespace().map(|s| s.to_string()).collect())
                 .unwrap_or(Vec::new()),
-            commits: Vec::new(),
-            tested_by: Vec::new(),
+            commits,
+            tested_by,
         }
     }
 
 }
 
-pub fn parse_document_from_file(file: File, article_path: String, lang: String) -> Result<Article, String> {
+pub fn parse_document_from_file(file: File, article_path: String, lang: String, commits: Vec<Commit>, tested_by: Vec<String>) -> Result<Article, String> {
     let reader = BufReader::new(file);
 
     let mut parser_state = ParserInternalState::new();
@@ -196,5 +221,5 @@ pub fn parse_document_from_file(file: File, article_path: String, lang: String) 
     }
     parser_state.finish_anchor();
 
-    Ok(parser_state.generate_article(article_path, lang))
+    Ok(parser_state.generate_article(article_path, lang, commits, tested_by))
 }

@@ -30,8 +30,8 @@ fn main() {
     //     println!("{:?}", codelib);
     // }
     let article_path = args.filepath;
-    let file = File::open(article_path).expect("Failed to open file");
-    let article = codelib2_tools::parse_document_from_file(file, "rust".to_string(), article_path);
+    let file = File::open(&article_path).expect("Failed to open file");
+    let article = codelib2_tools::parse_document_from_file(file, article_path, "rust".to_string(), vec![], vec![]);
 
     // print article
     println!("{:?}", article);
