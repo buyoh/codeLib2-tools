@@ -4,6 +4,7 @@ use std::collections::BTreeMap;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 
+#[cfg(test)]
 mod parser_snapshot_unittest;
 
 fn match_line_as_comment(line: &str) -> Option<&str> {

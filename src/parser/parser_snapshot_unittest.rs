@@ -1,8 +1,6 @@
 use serde_json::Value;
 use std::collections::BTreeMap;
 use std::fs::File;
-use std::io::Read;
-
 use crate::codelib::Commit;
 
 struct AdditionalInfo {
@@ -13,7 +11,6 @@ struct AdditionalInfo {
 }
 
 fn read_additional_info(mut file: File) -> AdditionalInfo {
-    let mut contents = String::new();
     let json: BTreeMap<String, Value> =
         serde_json::from_reader(&mut file).expect("Failed to parse JSON");
 
