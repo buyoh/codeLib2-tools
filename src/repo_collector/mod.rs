@@ -4,8 +4,8 @@ use glob::glob;
 #[derive(Debug)]
 pub struct Collection {
     pub base_path: String,
-    pub src_paths: Vec<String>,
-    pub test_paths: Vec<String>,
+    pub src_paths: Vec<Vec<String>>,
+    pub test_paths: Vec<Vec<String>>,
     pub langs: Vec<String>,
 }
 
@@ -29,9 +29,10 @@ fn collect_langs(base_path: &str) -> Result<Vec<String>, String> {
 }
 
 // TODO: Remove panic
-fn collect_paths(base_path: &str, langs: &Vec<String>, src_or_test: &str) -> Result<Vec<String>, String> {
-    let mut src_paths = Vec::new();
+fn collect_paths(base_path: &str, langs: &Vec<String>, src_or_test: &str) -> Result<Vec<Vec<String>>, String> {
+    let mut src_lang_paths: Vec<Vec<String>> = Vec::new();
     for lang in langs {
+        let mut src_paths = Vec::new();
         let g = if let Ok(g) = glob(&format!("{}/{}/{}/**/*", base_path, src_or_test, lang)) {
             g
         } else {
@@ -45,8 +46,9 @@ fn collect_paths(base_path: &str, langs: &Vec<String>, src_or_test: &str) -> Res
                 }
             }
         }
+        src_lang_paths.push(src_paths);
     }
-    Ok(src_paths)
+    Ok(src_lang_paths)
 }
 
 pub fn gather_collection(base_path: &str) -> Result<Collection, String> {
