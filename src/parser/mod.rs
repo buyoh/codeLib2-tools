@@ -194,7 +194,7 @@ impl ParserInternalState {
             words: self
                 .collected_sections
                 .get(&SectionAnchor::Words)
-                .map(|s| s.split_whitespace().map(|s| s.to_string()).collect())
+                .map(|s| s.split([',', ' ', '\n', '\t']).map(|s| s.to_string()).collect())
                 .unwrap_or(Vec::new()),
             verified: self
                 .collected_sections
