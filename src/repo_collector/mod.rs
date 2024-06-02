@@ -3,10 +3,20 @@ use glob::glob;
 // TODO: hidden?
 #[derive(Debug)]
 pub struct Collection {
-    pub base_path: String,
+    base_path: String,
     pub src_paths: Vec<Vec<String>>,
     pub test_paths: Vec<Vec<String>>,
     pub langs: Vec<String>,
+}
+
+impl Collection {
+    pub fn complete_path_str(&self, path: &str) -> String {
+        if path.starts_with("/") {
+            format!("{}{}", self.base_path, path)
+        } else {
+            format!("{}/{}", self.base_path, path)
+        }
+    }
 }
 
 fn collect_langs(base_path: &str) -> Result<Vec<String>, String> {
@@ -29,7 +39,11 @@ fn collect_langs(base_path: &str) -> Result<Vec<String>, String> {
 }
 
 // TODO: Remove panic
-fn collect_paths(base_path: &str, langs: &Vec<String>, src_or_test: &str) -> Result<Vec<Vec<String>>, String> {
+fn collect_paths(
+    base_path: &str,
+    langs: &Vec<String>,
+    src_or_test: &str,
+) -> Result<Vec<Vec<String>>, String> {
     let mut src_lang_paths: Vec<Vec<String>> = Vec::new();
     for lang in langs {
         let mut src_paths = Vec::new();
@@ -42,7 +56,8 @@ fn collect_paths(base_path: &str, langs: &Vec<String>, src_or_test: &str) -> Res
             if let Ok(entry) = entry {
                 // if entry is file
                 if entry.is_file() {
-                    src_paths.push(entry.to_str().unwrap().to_string());
+                    let stripped_path = entry.strip_prefix(base_path).unwrap();
+                    src_paths.push(format!("/{}", stripped_path.to_str().unwrap()));  // add '/' to the beginning
                 }
             }
         }
@@ -64,7 +79,7 @@ pub fn gather_collection(base_path: &str) -> Result<Collection, String> {
         Ok(test_paths) => test_paths,
         Err(err) => return Err(err),
     };
-    
+
     let collection = Collection {
         base_path: base_path.to_string(),
         langs: langs.clone(),
