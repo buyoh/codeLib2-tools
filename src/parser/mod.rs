@@ -208,6 +208,41 @@ impl ParserInternalState {
 
 }
 
+fn parse_code_info_from_file_cpp(file: File) -> Result<CodeInfo, String> {
+    let reader = BufReader::new(file);
+    let mut filepath_dependencies = Vec::new();
+    for may_line in reader.lines() {
+        let line = match may_line {
+            Ok(line) => line,
+            Err(_) => continue,
+        };
+        // Is this line a `#include` directive?
+        if line.starts_with("#include") {
+            // Extract the path from the `#include` directive by regexp
+            // <path> will be ignored.
+            let re = regex::Regex::new(r#"#include\s*["](.*)["]"#).unwrap();
+            let captures = re.captures(&line);
+            if let Some(captures) = captures {
+                let path = captures.get(1).unwrap().as_str();
+                // TODO: normalize path?
+                filepath_dependencies.push(path.to_string());
+
+            }
+        }
+    }
+    Ok(CodeInfo {
+        filepath_dependencies,
+    })
+}
+
+// ----------------------------------------------------------------------------
+
+pub struct CodeInfo {
+    pub filepath_dependencies: Vec<String>,
+}
+
+// ----------------------------------------------------------------------------
+
 pub fn parse_document_from_file(file: File, article_path: String, lang: String, commits: Vec<Commit>, tested_by: Vec<String>) -> Result<Article, String> {
     let reader = BufReader::new(file);
 
@@ -223,4 +258,15 @@ pub fn parse_document_from_file(file: File, article_path: String, lang: String, 
     parser_state.finish_anchor();
 
     Ok(parser_state.generate_article(article_path, lang, commits, tested_by))
+}
+
+pub fn parse_code_info_from_file(file: File, lang: String) -> Result<CodeInfo, String> {
+    match lang.as_str() {
+        "cpp" => {
+            parse_code_info_from_file_cpp(file)
+        }
+        _ => Ok(CodeInfo {
+            filepath_dependencies: Vec::new(),
+        }),
+    }
 }
