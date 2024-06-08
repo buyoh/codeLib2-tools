@@ -1,5 +1,5 @@
 use crate::codelib::Commit;
-use crate::Article;
+use crate::{Article, CodeInfo};
 use std::collections::BTreeMap;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
@@ -253,12 +253,6 @@ fn parse_code_info_from_file_cpp(file: File) -> Result<CodeInfo, String> {
     Ok(CodeInfo {
         filepath_dependencies,
     })
-}
-
-// ----------------------------------------------------------------------------
-
-pub struct CodeInfo {
-    pub filepath_dependencies: Vec<String>,
 }
 
 // ----------------------------------------------------------------------------

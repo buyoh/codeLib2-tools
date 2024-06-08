@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use crate::{parser::CodeInfo, repo_collector::Collection};
+use crate::{CodeInfo, CodeInfoSets, Collection};
 
 #[cfg(test)]
 mod unittest;
@@ -14,26 +14,19 @@ enum CodeIndex {
 
 struct RelationInternalSolver<'a> {
     collection: &'a Collection,
-    src_code_infos: &'a Vec<Vec<CodeInfo>>,
-    test_code_infos: &'a Vec<Vec<CodeInfo>>,
+    code_info_sets_vec: &'a Vec<CodeInfoSets>,
 
     // source_relations: Vec<SourceRelationSolving>,
     path_to_code_index: BTreeMap<String, CodeIndex>,
 }
 
-fn create_map_path_to_code_index(
-    collection: &Collection,
-    src_code_infos: &Vec<Vec<CodeInfo>>,
-    test_code_infos: &Vec<Vec<CodeInfo>>,
-) -> BTreeMap<String, CodeIndex> {
+fn create_map_path_to_code_index(collection: &Collection) -> BTreeMap<String, CodeIndex> {
     let mut map = BTreeMap::new();
-    for (lang_idx, lang_src_paths) in collection.src_paths.iter().enumerate() {
-        for (code_idx, src_path) in lang_src_paths.iter().enumerate() {
+    for (lang_idx, source_sets) in collection.source_sets.iter().enumerate() {
+        for (code_idx, src_path) in source_sets.src_paths.iter().enumerate() {
             map.insert(src_path.clone(), CodeIndex::Src(lang_idx, code_idx));
         }
-    }
-    for (lang_idx, lang_test_paths) in collection.test_paths.iter().enumerate() {
-        for (code_idx, test_path) in lang_test_paths.iter().enumerate() {
+        for (code_idx, test_path) in source_sets.test_paths.iter().enumerate() {
             map.insert(test_path.clone(), CodeIndex::Test(lang_idx, code_idx));
         }
     }
@@ -43,8 +36,12 @@ fn create_map_path_to_code_index(
 impl<'a> RelationInternalSolver<'a> {
     fn get_code_info(&self, code_index: &CodeIndex) -> &CodeInfo {
         match code_index {
-            CodeIndex::Src(lang_idx, code_idx) => &self.src_code_infos[*lang_idx][*code_idx],
-            CodeIndex::Test(lang_idx, code_idx) => &self.test_code_infos[*lang_idx][*code_idx],
+            CodeIndex::Src(lang_idx, code_idx) => {
+                &self.code_info_sets_vec[*lang_idx].src_code_infos[*code_idx]
+            }
+            CodeIndex::Test(lang_idx, code_idx) => {
+                &self.code_info_sets_vec[*lang_idx].test_code_infos[*code_idx]
+            }
         }
     }
 
@@ -70,25 +67,27 @@ impl<'a> RelationInternalSolver<'a> {
 
     fn solve_internal(&mut self) -> Result<Relations, String> {
         let source_relations = self
-            .test_code_infos
+            .collection
+            .source_sets
             .iter()
             .enumerate()
-            .map(|(lang_idx, tcis)| {
-                let src_code_len = self.src_code_infos[lang_idx].len();
+            .map(|(lang_idx, source_sets)| {
+                let code_info_sets = &self.code_info_sets_vec[lang_idx];
+                let src_code_len = source_sets.src_paths.len();
                 let mut source_relations = vec![
                     SourceRelation {
                         tested_by: Vec::new(),
                     };
                     src_code_len
                 ];
-                for (i, _tci) in tcis.iter().enumerate() {
+                for (i, _tci) in code_info_sets.test_code_infos.iter().enumerate() {
                     let code_index = CodeIndex::Test(lang_idx, i);
                     let mut visited = BTreeSet::new();
                     self.solve_internal_tested_by_dfs(&code_index, &mut visited);
 
                     for ci in visited.iter() {
                         // collect src code depended by the test code.
-                        // src code depended by test code is 
+                        // src code depended by test code is
                         match ci {
                             CodeIndex::Src(lang_idx2, code_idx) if lang_idx == *lang_idx2 => {
                                 source_relations[*code_idx].tested_by.push(i);
@@ -106,33 +105,28 @@ impl<'a> RelationInternalSolver<'a> {
 
     fn solve(
         collection: &Collection,
-        src_code_infos: &Vec<Vec<CodeInfo>>,
-        test_code_infos: &Vec<Vec<CodeInfo>>,
+        code_info_sets_vec: &Vec<CodeInfoSets>,
     ) -> Result<Relations, String> {
         // validation
-        let lang_len = collection.langs.len();
-        if lang_len != src_code_infos.len() || lang_len != test_code_infos.len() {
-            return Err(
-                "Length of langs, src_code_infos, and test_code_infos are not equal".to_string(),
-            );
+        // TODO: Modfy struct to be unecessary this validation
+
+        if collection.source_sets.len() != code_info_sets_vec.len() {
+            return Err("Length of source_sets and code_info_sets are not equal".to_string());
         }
-        for i in 0..lang_len {
-            if src_code_infos[i].len() != collection.src_paths[i].len()
-                || test_code_infos[i].len() != collection.test_paths[i].len()
-            {
-                return Err("Length of src_code_infos and test_code_infos are not equal to the length of paths".to_string());
+
+        for (source_sets, code_info_sets) in collection.source_sets.iter().zip(code_info_sets_vec) {
+            if source_sets.lang != code_info_sets.lang {
+                return Err(
+                    "Langs in source_sets and code_info_sets are not equal. Is it sorted?"
+                        .to_string(),
+                );
             }
         }
 
         RelationInternalSolver {
             collection,
-            src_code_infos,
-            test_code_infos,
-            path_to_code_index: create_map_path_to_code_index(
-                collection,
-                src_code_infos,
-                test_code_infos,
-            ),
+            code_info_sets_vec,
+            path_to_code_index: create_map_path_to_code_index(collection),
         }
         .solve_internal()
     }
@@ -153,8 +147,7 @@ pub struct Relations {
 // TODO: Re-consider interface: especially src_code_infos and test_code_infos
 pub fn solve_relation(
     collection: &Collection,
-    src_code_infos: &Vec<Vec<CodeInfo>>,
-    test_code_infos: &Vec<Vec<CodeInfo>>,
+    code_info_sets_vec: &Vec<CodeInfoSets>,
 ) -> Result<Relations, String> {
-    RelationInternalSolver::solve(collection, src_code_infos, test_code_infos)
+    RelationInternalSolver::solve(collection, code_info_sets_vec)
 }

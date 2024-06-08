@@ -19,3 +19,41 @@ pub struct Article {
     pub commits: Vec<Commit>,
     pub tested_by: Vec<String>,
 }
+
+// ------------------------------------
+
+#[derive(Debug)]
+pub struct CodeInfo {
+    pub filepath_dependencies: Vec<String>,
+}
+
+pub struct CodeInfoSets {
+    pub lang: String,
+    pub src_code_infos: Vec<CodeInfo>,
+    pub test_code_infos: Vec<CodeInfo>,
+}
+
+// ------------------------------------
+
+#[derive(Debug)]
+pub struct SourceSets {
+    // TODO: Rename to SourcePathSets
+    pub lang: String,
+    pub src_paths: Vec<String>,
+    pub test_paths: Vec<String>,
+}
+
+pub struct Collection {
+    pub base_path: String,
+    pub source_sets: Vec<SourceSets>,
+}
+
+impl Collection {
+    pub fn complete_path_str(&self, path: &str) -> String {
+        if path.starts_with("/") {
+            format!("{}{}", self.base_path, path)
+        } else {
+            format!("{}/{}", self.base_path, path)
+        }
+    }
+}

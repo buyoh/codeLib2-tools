@@ -1,26 +1,6 @@
 use glob::glob;
 
-// TODO: 言語ごとに管理されるべき。
-// TODO: hidden?
-#[derive(Debug)]
-pub struct Collection {
-    pub base_path: String,
-    // src_paths[language_id][idx]
-    pub src_paths: Vec<Vec<String>>,
-    // src_paths[language_id][idx]
-    pub test_paths: Vec<Vec<String>>,
-    pub langs: Vec<String>,
-}
-
-impl Collection {
-    pub fn complete_path_str(&self, path: &str) -> String {
-        if path.starts_with("/") {
-            format!("{}{}", self.base_path, path)
-        } else {
-            format!("{}/{}", self.base_path, path)
-        }
-    }
-}
+use crate::{Collection, SourceSets};
 
 fn collect_langs(base_path: &str) -> Result<Vec<String>, String> {
     let mut langs = Vec::new();
@@ -86,9 +66,16 @@ pub fn gather_collection(base_path: &str) -> Result<Collection, String> {
 
     let collection = Collection {
         base_path: base_path.to_string(),
-        langs: langs.clone(),
-        src_paths,
-        test_paths,
+        source_sets: src_paths
+            .into_iter()
+            .zip(test_paths.into_iter())
+            .zip(langs.into_iter())
+            .map(|((src_paths, test_paths), lang)| SourceSets {
+                lang,
+                src_paths,
+                test_paths,
+            })
+            .collect(),
     };
     Ok(collection)
 }
