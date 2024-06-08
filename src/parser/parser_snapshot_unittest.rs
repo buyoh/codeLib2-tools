@@ -1,7 +1,7 @@
+use crate::codelib::Commit;
 use serde_json::Value;
 use std::collections::BTreeMap;
 use std::fs::File;
-use crate::codelib::Commit;
 
 struct AdditionalInfo {
     lang: String,

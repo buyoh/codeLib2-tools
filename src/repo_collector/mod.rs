@@ -4,7 +4,9 @@ use glob::glob;
 #[derive(Debug)]
 pub struct Collection {
     base_path: String,
+    // src_paths[language_id][idx]
     pub src_paths: Vec<Vec<String>>,
+    // src_paths[language_id][idx]
     pub test_paths: Vec<Vec<String>>,
     pub langs: Vec<String>,
 }
@@ -57,7 +59,8 @@ fn collect_paths(
                 // if entry is file
                 if entry.is_file() {
                     let stripped_path = entry.strip_prefix(base_path).unwrap();
-                    src_paths.push(format!("/{}", stripped_path.to_str().unwrap()));  // add '/' to the beginning
+                    src_paths.push(format!("/{}", stripped_path.to_str().unwrap()));
+                    // add '/' to the beginning
                 }
             }
         }

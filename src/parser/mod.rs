@@ -167,7 +167,13 @@ impl ParserInternalState {
         Ok(())
     }
 
-    fn generate_article(self, path: String, lang: String, commits: Vec<Commit>, tested_by: Vec<String>) -> Article {
+    fn generate_article(
+        self,
+        path: String,
+        lang: String,
+        commits: Vec<Commit>,
+        tested_by: Vec<String>,
+    ) -> Article {
         Article {
             title: self
                 .collected_sections
@@ -194,7 +200,11 @@ impl ParserInternalState {
             words: self
                 .collected_sections
                 .get(&SectionAnchor::Words)
-                .map(|s| s.split([',', ' ', '\n', '\t']).map(|s| s.to_string()).collect())
+                .map(|s| {
+                    s.split([',', ' ', '\n', '\t'])
+                        .map(|s| s.to_string())
+                        .collect()
+                })
                 .unwrap_or(Vec::new()),
             verified: self
                 .collected_sections
@@ -205,7 +215,6 @@ impl ParserInternalState {
             tested_by,
         }
     }
-
 }
 
 fn parse_code_info_from_file_cpp(file: File) -> Result<CodeInfo, String> {
@@ -226,7 +235,6 @@ fn parse_code_info_from_file_cpp(file: File) -> Result<CodeInfo, String> {
                 let path = captures.get(1).unwrap().as_str();
                 // TODO: normalize path?
                 filepath_dependencies.push(path.to_string());
-
             }
         }
     }
@@ -243,7 +251,13 @@ pub struct CodeInfo {
 
 // ----------------------------------------------------------------------------
 
-pub fn parse_document_from_file(file: File, article_path: String, lang: String, commits: Vec<Commit>, tested_by: Vec<String>) -> Result<Article, String> {
+pub fn parse_document_from_file(
+    file: File,
+    article_path: String,
+    lang: String,
+    commits: Vec<Commit>,
+    tested_by: Vec<String>,
+) -> Result<Article, String> {
     let reader = BufReader::new(file);
 
     let mut parser_state = ParserInternalState::new();
@@ -262,9 +276,7 @@ pub fn parse_document_from_file(file: File, article_path: String, lang: String, 
 
 pub fn parse_code_info_from_file(file: File, lang: String) -> Result<CodeInfo, String> {
     match lang.as_str() {
-        "cpp" => {
-            parse_code_info_from_file_cpp(file)
-        }
+        "cpp" => parse_code_info_from_file_cpp(file),
         _ => Ok(CodeInfo {
             filepath_dependencies: Vec::new(),
         }),
