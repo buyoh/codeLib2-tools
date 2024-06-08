@@ -173,8 +173,20 @@ impl ParserInternalState {
         lang: String,
         commits: Vec<Commit>,
         tested_by: Vec<String>,
-    ) -> Article {
-        Article {
+    ) -> Result<Article, String> {
+        if let Some(_) = self.block_anchor {
+            return Err("Block anchor is not closed".to_string());
+        }
+
+        if self.collected_code.is_empty() {
+            return Err("Code block is empty".to_string());
+        }
+
+        if self.collected_sections.get(&SectionAnchor::Title).is_none() {
+            return Err("Title is required".to_string());
+        }
+
+        Ok(Article {
             title: self
                 .collected_sections
                 .get(&SectionAnchor::Title)
@@ -213,7 +225,7 @@ impl ParserInternalState {
                 .unwrap_or(Vec::new()),
             commits,
             tested_by,
-        }
+        })
     }
 }
 
@@ -234,7 +246,7 @@ fn parse_code_info_from_file_cpp(file: File) -> Result<CodeInfo, String> {
             if let Some(captures) = captures {
                 let path = captures.get(1).unwrap().as_str();
                 // TODO: normalize path?
-                filepath_dependencies.push(path.to_string());
+                filepath_dependencies.push(format!("/{}", path));
             }
         }
     }
@@ -271,7 +283,7 @@ pub fn parse_document_from_file(
     }
     parser_state.finish_anchor();
 
-    Ok(parser_state.generate_article(article_path, lang, commits, tested_by))
+    parser_state.generate_article(article_path, lang, commits, tested_by)
 }
 
 pub fn parse_code_info_from_file(file: File, lang: String) -> Result<CodeInfo, String> {
