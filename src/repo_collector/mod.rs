@@ -1,9 +1,10 @@
 use glob::glob;
 
+// TODO: 言語ごとに管理されるべき。
 // TODO: hidden?
 #[derive(Debug)]
 pub struct Collection {
-    base_path: String,
+    pub base_path: String,
     // src_paths[language_id][idx]
     pub src_paths: Vec<Vec<String>>,
     // src_paths[language_id][idx]

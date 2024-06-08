@@ -2,6 +2,9 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use crate::{parser::CodeInfo, repo_collector::Collection};
 
+#[cfg(test)]
+mod unittest;
+
 // TODO: not in relation_solver private?
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 enum CodeIndex {
@@ -71,24 +74,30 @@ impl<'a> RelationInternalSolver<'a> {
             .iter()
             .enumerate()
             .map(|(lang_idx, tcis)| {
-                tcis.iter()
-                    .enumerate()
-                    .map(|(i, tci)| {
-                        let code_index = CodeIndex::Test(lang_idx, i);
-                        let mut visited = BTreeSet::new();
-                        self.solve_internal_tested_by_dfs(&code_index, &mut visited);
+                let src_code_len = self.src_code_infos[lang_idx].len();
+                let mut source_relations = vec![
+                    SourceRelation {
+                        tested_by: Vec::new(),
+                    };
+                    src_code_len
+                ];
+                for (i, _tci) in tcis.iter().enumerate() {
+                    let code_index = CodeIndex::Test(lang_idx, i);
+                    let mut visited = BTreeSet::new();
+                    self.solve_internal_tested_by_dfs(&code_index, &mut visited);
 
-                        SourceRelation {
-                            tested_by: visited
-                                .iter()
-                                .filter_map(|ci| match ci {
-                                    CodeIndex::Src(_, code_idx) => Some(*code_idx),
-                                    _ => None,
-                                })
-                                .collect(),
+                    for ci in visited.iter() {
+                        // collect src code depended by the test code.
+                        // src code depended by test code is 
+                        match ci {
+                            CodeIndex::Src(lang_idx2, code_idx) if lang_idx == *lang_idx2 => {
+                                source_relations[*code_idx].tested_by.push(i);
+                            }
+                            _ => {}
                         }
-                    })
-                    .collect()
+                    }
+                }
+                source_relations
             })
             .collect();
 
@@ -131,8 +140,9 @@ impl<'a> RelationInternalSolver<'a> {
 
 // ----------------------------------------------------------------------------
 
+#[derive(Clone)]
 pub struct SourceRelation {
-    pub tested_by: Vec<usize>, // code_idx
+    pub tested_by: Vec<usize>, // test_code_idx
 }
 
 pub struct Relations {
