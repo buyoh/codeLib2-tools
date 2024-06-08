@@ -203,7 +203,7 @@ impl ParserInternalState {
             require: self
                 .collected_sections
                 .get(&SectionAnchor::Require)
-                .map(|s| s.clone()),
+                .map(|s| s.clone()).unwrap_or(String::new()),
             references: self
                 .collected_sections
                 .get(&SectionAnchor::References)

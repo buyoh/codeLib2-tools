@@ -12,7 +12,7 @@ pub struct Article {
     pub code: String,
     pub lang: String,
     pub path: String,
-    pub require: Option<String>,
+    pub require: String,
     pub references: Vec<String>,
     pub words: Vec<String>,
     pub verified: Vec<String>,
