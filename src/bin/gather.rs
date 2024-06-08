@@ -21,7 +21,13 @@ fn main() {
         std::process::exit(1);
     }
 
-    let articles = codelib2_tools::complete_articles(&base_path);
+    let articles = match codelib2_tools::complete_articles(&base_path) {
+        Ok(articles) => articles,
+        Err(err) => {
+            eprintln!("Failed: {}", err);
+            std::process::exit(1);
+        }
+    };
 
     let json_str = if args.pretty {
         serde_json::to_string_pretty(&articles).unwrap()

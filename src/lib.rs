@@ -5,6 +5,7 @@ mod repo_collector;
 
 use std::fs::File;
 
+use clap::Error;
 // TODO: remove several pub
 pub use codelib::{Article, CodeInfo, CodeInfoSets, Collection, Commit, SourceSets};
 
@@ -52,11 +53,17 @@ fn collect_code_infos(collection: &Collection) -> Vec<CodeInfoSets> {
         .collect()
 }
 
-pub fn complete_articles(base_path: &str) -> Vec<Article> {
-    let collection = gather_collection(&base_path).unwrap();
+pub fn complete_articles(base_path: &str) -> Result<Vec<Article>, String> {
+    let collection = match gather_collection(&base_path) {
+        Ok(collection) => collection,
+        Err(err) => return Err(err),
+    };
 
     let code_info_sets_vec = collect_code_infos(&collection);
-    let relations = solve_relation(&collection, &code_info_sets_vec).unwrap();
+    let relations = match solve_relation(&collection, &code_info_sets_vec) {
+        Ok(relations) => relations,
+        Err(err) => return Err(err),
+    };
 
     let mut articles = Vec::new();
     for (i, source_sets) in collection.source_sets.iter().enumerate() {
@@ -86,5 +93,5 @@ pub fn complete_articles(base_path: &str) -> Vec<Article> {
             });
         }
     }
-    articles
+    Ok(articles)
 }

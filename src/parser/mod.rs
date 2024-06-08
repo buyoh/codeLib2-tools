@@ -241,6 +241,7 @@ fn parse_code_info_from_file_cpp(file: File) -> Result<CodeInfo, String> {
         if line.starts_with("#include") {
             // Extract the path from the `#include` directive by regexp
             // <path> will be ignored.
+            // unwrap is ok because the pattern is always valid
             let re = regex::Regex::new(r#"#include\s*["](.*)["]"#).unwrap();
             let captures = re.captures(&line);
             if let Some(captures) = captures {
