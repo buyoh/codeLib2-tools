@@ -12,7 +12,7 @@ pub use codelib::{Article, CodeInfo, CodeInfoSets, Collection, Commit, SourceSet
 use parser::parse_code_info_from_file;
 use parser::parse_document_from_file;
 use relation_solver::solve_relation;
-use repo_collector::gather_collection;
+pub use repo_collector::gather_collection;
 // use repo_collector::gather_commit_info;
 
 fn collect_code_infos(collection: &Collection) -> Vec<CodeInfoSets> {
@@ -53,12 +53,7 @@ fn collect_code_infos(collection: &Collection) -> Vec<CodeInfoSets> {
         .collect()
 }
 
-pub fn complete_articles(base_path: &str) -> Result<Vec<Article>, String> {
-    let collection = match gather_collection(&base_path) {
-        Ok(collection) => collection,
-        Err(err) => return Err(err),
-    };
-
+pub fn complete_articles(collection : &Collection) -> Result<Vec<Article>, String> {
     let code_info_sets_vec = collect_code_infos(&collection);
     let relations = match solve_relation(&collection, &code_info_sets_vec) {
         Ok(relations) => relations,

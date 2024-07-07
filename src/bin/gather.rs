@@ -21,7 +21,15 @@ fn main() {
         std::process::exit(1);
     }
 
-    let articles = match codelib2_tools::complete_articles(&base_path) {
+    let collection = match codelib2_tools::gather_collection(&base_path) {
+        Ok(collection) => collection,
+        Err(err) => {
+            eprintln!("Failed: {}", err);
+            std::process::exit(1);
+        }
+    };
+
+    let articles = match codelib2_tools::complete_articles(&collection) {
         Ok(articles) => articles,
         Err(err) => {
             eprintln!("Failed: {}", err);
