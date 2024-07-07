@@ -35,7 +35,7 @@ pub struct CodeInfoSets {
 
 // ------------------------------------
 
-#[derive(Debug)]
+#[derive(Debug, serde::Deserialize, serde::Serialize)]
 pub struct SourceSets {
     // TODO: Rename to SourcePathSets
     pub lang: String,
@@ -43,6 +43,7 @@ pub struct SourceSets {
     pub test_paths: Vec<String>,
 }
 
+#[derive(Debug, serde::Deserialize, serde::Serialize)]
 pub struct Collection {
     pub base_path: String,
     pub source_sets: Vec<SourceSets>,
