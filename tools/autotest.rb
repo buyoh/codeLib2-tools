@@ -31,7 +31,6 @@ collection = JSON.parse(File.read(@collection_path))
 @basedir ||= collection['base_path']
 
 total_results = []
-all_ok = true
 
 # TODO: 並列化。並列化するときは、tmpdirもそれぞれのスレッドで作成する必要がある
 collection['source_sets'].each do |source_set|
