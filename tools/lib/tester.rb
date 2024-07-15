@@ -60,6 +60,25 @@ module Tester
 
         results
       end
+
+      def refactor_code(path, inplace)
+        ok = true
+        if inplace
+          ok = system("clang-format -i -style=file #{path}")
+        else
+          diff = `bash -c "diff <( clang-format -style=file #{path} ) #{path}"`
+          # TODO: What is this? (Copied from old code)
+          unless diff =~ /^\s*$/
+            ok = false
+            puts "clang-format assertion: #{path}"
+            puts 'diff...'
+            puts diff
+            puts ''
+          end
+        end
+        # Always return true
+        ok
+      end
     end
   end
 
