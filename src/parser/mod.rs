@@ -145,7 +145,10 @@ impl ParserInternalState {
                     self.section_codeblock = true;
                 }
             } else {
-                if self.section_codeblock {
+                if let Some(BlockAnchor::Code) = self.block_anchor {
+                    self.collected_code.push_str(line);
+                    self.collected_code.push_str("\n");
+                } else if self.section_codeblock {
                     self.parsing_text.push_str(line);
                     self.parsing_text.push_str("\n");
                 } else {

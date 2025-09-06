@@ -33,6 +33,7 @@ using namespace std;
 // http://tookunn.hatenablog.com/entry/2016/07/13/211148
 // %=END DOC
 // %=BEGIN CODE
+// Sparse Table
 template <typename T>
 class SparseTable {
  public:
