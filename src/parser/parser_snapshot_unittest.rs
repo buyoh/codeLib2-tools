@@ -2,9 +2,10 @@ use crate::codelib::Commit;
 use serde_json::Value;
 use std::collections::BTreeMap;
 use std::fs::File;
+use std::path::Path;
 
 struct AdditionalInfo {
-    lang: String,
+    lang: crate::Lang,
     path: String,
     commits: Vec<Commit>,
     tested_by: Vec<String>,
@@ -14,13 +15,15 @@ fn read_additional_info(mut file: File) -> AdditionalInfo {
     let json: BTreeMap<String, Value> =
         serde_json::from_reader(&mut file).expect("Failed to parse JSON");
 
-    let mut lang = None as Option<String>;
+    let mut lang = None as Option<crate::Lang>;
     let mut path = None as Option<String>;
     let mut commits = None as Option<Vec<Commit>>; // empty is ok
     let mut tested_by = None as Option<Vec<String>>; // empty is ok
     for (key, val) in json {
         match key.as_str() {
-            "lang" => lang = Some(val.as_str().expect("lang must be a string").to_string()),
+            "lang" => {
+                lang = Some(serde_json::from_value(val).expect("lang must be a valid language"))
+            }
             "path" => path = Some(val.as_str().expect("path must be a string").to_string()),
             "commits" => {
                 let mut commit_vec = Vec::new();
@@ -69,9 +72,8 @@ fn read_additional_info(mut file: File) -> AdditionalInfo {
 }
 
 fn test_parse_file(path: &str) {
-    let path_without_ext = path.split('.').next().expect("path must have an extension");
-    let path_additional = format!("{}.json", path_without_ext);
-    let path_expected = format!("{}.out.json", path_without_ext);
+    let path_additional = Path::new(path).with_extension("json");
+    let path_expected = Path::new(path).with_extension("out.json");
 
     let additional_info =
         read_additional_info(File::open(path_additional).expect("Failed to open file"));
@@ -80,16 +82,19 @@ fn test_parse_file(path: &str) {
         serde_json::from_reader(File::open(path_expected).expect("Failed to open file"))
             .expect("Failed to parse JSON");
 
-    let parsed_article = crate::parser::parse_document_from_file(
-        File::open(path).expect("Failed to open file"),
+    let content = std::fs::read_to_string(path).expect("Failed to read file");
+    let parsed = crate::parser::parse_document(
+        &content,
         additional_info.path,
         additional_info.lang,
         additional_info.commits,
         additional_info.tested_by,
     )
-    .expect("Failed to parse article");
+    .expect("Failed to parse article")
+    .expect("Must be a document");
+    assert!(parsed.warnings.is_empty());
 
-    let article_json = serde_json::to_value(&parsed_article).expect("Failed to serialize article");
+    let article_json = serde_json::to_value(&parsed.article).expect("Failed to serialize article");
 
     assert_eq!(article_json, expected_json);
 }

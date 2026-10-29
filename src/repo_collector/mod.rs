@@ -1,83 +1,132 @@
-use glob::glob;
+use std::fs;
+use std::path::Path;
 
-use crate::{Collection, SourceSets};
+use crate::{Collection, Lang, SourceSets};
 
-fn collect_langs(base_path: &str) -> Result<Vec<String>, String> {
-    let mut langs = Vec::new();
-    let g = if let Ok(g) = glob(&format!("{}/src/*", base_path)) {
-        g
-    } else {
-        return Err("Failed to read glob pattern; base_path may be wrong".to_string());
-    };
-    for entry in g {
-        // if entry is directory
-        if let Ok(entry) = entry {
-            if entry.is_dir() {
-                let lang = entry.file_name().unwrap().to_str().unwrap().to_string();
-                langs.push(lang);
+#[cfg(test)]
+mod unittest;
+
+fn file_name_str(path: &Path) -> Result<&str, String> {
+    path.file_name()
+        .and_then(|s| s.to_str())
+        .ok_or_else(|| format!("{}: file name is not valid UTF-8", path.display()))
+}
+
+// Pairs of language and its directory name (e.g. "Go")
+type LangDirs = Vec<(Lang, String)>;
+
+// Directories under src/ are languages. Returns found languages and warnings.
+fn collect_langs(base_path: &Path) -> Result<(LangDirs, Vec<String>), String> {
+    let src_dir = base_path.join("src");
+    let mut entries = fs::read_dir(&src_dir)
+        .map_err(|e| format!("{}: {}", src_dir.display(), e))?
+        .map(|entry| entry.map(|e| e.path()))
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| format!("{}: {}", src_dir.display(), e))?;
+    // Sort to be deterministic when duplicated directories exist (e.g. "Go" and "go")
+    entries.sort();
+
+    let mut langs: LangDirs = Vec::new();
+    let mut warnings = Vec::new();
+    for path in entries {
+        if !path.is_dir() {
+            continue;
+        }
+        let name = file_name_str(&path)?;
+        match Lang::from_dir_name(name) {
+            Some(lang) if langs.iter().any(|(l, _)| *l == lang) => {
+                warnings.push(format!("{}: duplicated language directory", path.display()))
+            }
+            Some(lang) => langs.push((lang, name.to_string())),
+            None => warnings.push(format!(
+                "{}: unsupported language directory",
+                path.display()
+            )),
+        }
+    }
+    langs.sort();
+    Ok((langs, warnings))
+}
+
+// Guard against symlink loops
+const MAX_DIR_DEPTH: usize = 32;
+
+// Collect files recursively (following symlinks) as paths relative to base_path, e.g. "/src/cpp/a.hpp".
+fn collect_files(
+    dir: &Path,
+    relative_dir: &str,
+    extensions: &[&str],
+    depth: usize,
+    paths: &mut Vec<String>,
+) -> Result<(), String> {
+    if depth > MAX_DIR_DEPTH {
+        return Err(format!(
+            "{}: directory is too deep (symlink loop?)",
+            dir.display()
+        ));
+    }
+    let mut entries = fs::read_dir(dir)
+        .map_err(|e| format!("{}: {}", dir.display(), e))?
+        .map(|entry| entry.map(|e| e.path()))
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| format!("{}: {}", dir.display(), e))?;
+    entries.sort();
+
+    for path in entries {
+        let relative_path = format!("{}/{}", relative_dir, file_name_str(&path)?);
+        if path.is_dir() {
+            collect_files(&path, &relative_path, extensions, depth + 1, paths)?;
+        } else if path.is_file() {
+            let ext = path.extension().and_then(|s| s.to_str()).unwrap_or("");
+            if extensions.contains(&ext) {
+                paths.push(relative_path);
             }
         }
     }
-    Ok(langs)
+    Ok(())
 }
 
-// TODO: Remove panic
 fn collect_paths(
-    base_path: &str,
-    langs: &Vec<String>,
+    base_path: &Path,
+    lang_dir: &str,
     src_or_test: &str,
-) -> Result<Vec<Vec<String>>, String> {
-    let mut src_lang_paths: Vec<Vec<String>> = Vec::new();
-    for lang in langs {
-        let mut src_paths = Vec::new();
-        let g = if let Ok(g) = glob(&format!("{}/{}/{}/**/*", base_path, src_or_test, lang)) {
-            g
-        } else {
-            return Err("Failed to read glob pattern; base_path may be wrong".to_string());
-        };
-        for entry in g {
-            if let Ok(entry) = entry {
-                // if entry is file
-                if entry.is_file() {
-                    let stripped_path = entry.strip_prefix(base_path).unwrap();
-                    src_paths.push(format!("/{}", stripped_path.to_str().unwrap()));
-                    // add '/' to the beginning
-                }
-            }
-        }
-        src_lang_paths.push(src_paths);
+    lang: Lang,
+) -> Result<Vec<String>, String> {
+    let dir = base_path.join(src_or_test).join(lang_dir);
+    let mut paths = Vec::new();
+    if dir.is_dir() {
+        collect_files(
+            &dir,
+            &format!("/{}/{}", src_or_test, lang_dir),
+            lang.extensions(),
+            0,
+            &mut paths,
+        )?;
     }
-    Ok(src_lang_paths)
+    Ok(paths)
 }
 
-pub fn gather_collection(base_path: &str) -> Result<Collection, String> {
-    let langs = match collect_langs(base_path) {
-        Ok(langs) => langs,
-        Err(err) => return Err(err),
-    };
-    let src_paths = match collect_paths(base_path, &langs, "src") {
-        Ok(src_paths) => src_paths,
-        Err(err) => return Err(err),
-    };
-    let test_paths = match collect_paths(base_path, &langs, "test") {
-        Ok(test_paths) => test_paths,
-        Err(err) => return Err(err),
-    };
+// Returns the collection and warnings
+pub fn gather_collection(base_path: &str) -> Result<(Collection, Vec<String>), String> {
+    let base = Path::new(base_path);
+    let (langs, warnings) = collect_langs(base)?;
+
+    let source_sets = langs
+        .into_iter()
+        .map(|(lang, lang_dir)| {
+            Ok(SourceSets {
+                lang,
+                src_paths: collect_paths(base, &lang_dir, "src", lang)?,
+                test_paths: collect_paths(base, &lang_dir, "test", lang)?,
+            })
+        })
+        .collect::<Result<Vec<_>, String>>()?;
 
     let collection = Collection {
         base_path: base_path.to_string(),
-        source_sets: src_paths
-            .into_iter()
-            .zip(test_paths.into_iter())
-            .zip(langs.into_iter())
-            .map(|((src_paths, test_paths), lang)| SourceSets {
-                lang,
-                src_paths,
-                test_paths,
-            })
-            .collect(),
+        source_sets,
     };
-    Ok(collection)
+    Ok((collection, warnings))
 }
 
 pub fn gather_commit_info(_filepath: &str) -> Result<Vec<crate::codelib::Commit>, String> {

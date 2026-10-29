@@ -2,10 +2,13 @@ require_relative 'common/runner'
 
 module Tester
   module Cpp
+    @timeout_build_sec = 10
+    @timeout_run_sec = 10
+    @timeout_format_sec = 10
+
     class << self
-      TIMEOUT_BUILD_SEC = 3
-      TIMEOUT_RUN_SEC = 10
-      TIMEOUT_FORMAT_SEC = 10
+      attr_accessor :timeout_build_sec, :timeout_run_sec, :timeout_format_sec
+
       def default_options(basedir)
         ['g++', '-I', basedir, '-lm', '-Wall', '-Wno-comment']
       end
@@ -16,7 +19,7 @@ module Tester
         std_list.each do |std|
           key = std
           cmd = default_options(basedir) + ['-fsyntax-only', '-std=' + std, input_src_path]
-          result = Runner.join_spawn_with_timeout(cmd, TIMEOUT_BUILD_SEC)
+          result = Runner.join_spawn_with_timeout(cmd, timeout_build_sec)
 
           results[key] = {
             ok: result.exit_code == 0,
@@ -32,7 +35,7 @@ module Tester
         results = {}
         std = 'c++20'
         cmd = default_options(basedir) + ['-std=' + std, input_src_path, '-o', tempdir + '/a.out']
-        result_compile = Runner.join_spawn_with_timeout(cmd, TIMEOUT_BUILD_SEC)
+        result_compile = Runner.join_spawn_with_timeout(cmd, timeout_build_sec)
 
         results['compile'] = {
           ok: result_compile.exit_code == 0,
@@ -46,7 +49,7 @@ module Tester
         # TODO: chdir?
 
         cmd = [tempdir + '/a.out']
-        result_run = Runner.join_spawn_with_timeout(cmd, TIMEOUT_RUN_SEC)
+        result_run = Runner.join_spawn_with_timeout(cmd, timeout_run_sec)
 
         results['run'] = {
           ok: result_run.exit_code == 0,
@@ -61,7 +64,7 @@ module Tester
       def refactor_code(path, inplace)
         cmd = ['clang-format', '-style=file']
         cmd += inplace ? ['-i'] : ['--dry-run', '-Werror']
-        result = Runner.join_spawn_with_timeout(cmd + [path], TIMEOUT_FORMAT_SEC)
+        result = Runner.join_spawn_with_timeout(cmd + [path], timeout_format_sec)
         return true if result.exit_code == 0
 
         puts "clang-format assertion: #{path}"

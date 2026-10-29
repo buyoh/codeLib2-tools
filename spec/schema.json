@@ -17,7 +17,7 @@
     "lang": {
       "type": "string",
       "description": "Programming language of the code",
-      "enum": ["cpp", "ruby", "rust", "javascript", "typescript"]
+      "enum": ["cpp", "rust", "ruby", "javascript", "typescript", "go"]
     },
     "path": {
       "type": "string",
@@ -29,17 +29,17 @@
     },
     "references": {
       "type": "array",
-      "description": "List of reference URLs",
+      "description": "List of references (URL or text such as a book title), one per line",
       "items": {
-        "type": "string",
-        "format": "uri"
+        "type": "string"
       }
     },
     "words": {
       "type": "array",
       "description": "List of search words",
       "items": {
-        "type": "string"
+        "type": "string",
+        "minLength": 1
       }
     },
     "verified": {

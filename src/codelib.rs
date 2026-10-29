@@ -1,3 +1,57 @@
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, serde::Deserialize, serde::Serialize,
+)]
+#[serde(rename_all = "lowercase")]
+pub enum Lang {
+    Cpp,
+    Rust,
+    Ruby,
+    Javascript,
+    Typescript,
+    Go,
+}
+
+impl Lang {
+    pub const ALL: [Lang; 6] = [
+        Lang::Cpp,
+        Lang::Rust,
+        Lang::Ruby,
+        Lang::Javascript,
+        Lang::Typescript,
+        Lang::Go,
+    ];
+
+    // Directory name under src/ (case-insensitive, e.g. "Go")
+    pub fn from_dir_name(name: &str) -> Option<Self> {
+        Self::ALL
+            .into_iter()
+            .find(|lang| lang.name().eq_ignore_ascii_case(name))
+    }
+
+    pub fn name(&self) -> &'static str {
+        match self {
+            Lang::Cpp => "cpp",
+            Lang::Rust => "rust",
+            Lang::Ruby => "ruby",
+            Lang::Javascript => "javascript",
+            Lang::Typescript => "typescript",
+            Lang::Go => "go",
+        }
+    }
+
+    // File extensions collected as source code
+    pub fn extensions(&self) -> &'static [&'static str] {
+        match self {
+            Lang::Cpp => &["hpp", "cpp", "h", "cc"],
+            Lang::Rust => &["rs"],
+            Lang::Ruby => &["rb", "ruby"],
+            Lang::Javascript => &["js", "mjs", "cjs"],
+            Lang::Typescript => &["ts"],
+            Lang::Go => &["go"],
+        }
+    }
+}
+
 #[derive(Debug, serde::Deserialize, serde::Serialize)]
 pub struct Commit {
     pub sha: String,
@@ -10,7 +64,7 @@ pub struct Article {
     pub title: String,
     pub overview: String,
     pub code: String,
-    pub lang: String,
+    pub lang: Lang,
     pub path: String,
     pub require: String,
     pub references: Vec<String>,
@@ -22,15 +76,9 @@ pub struct Article {
 
 // ------------------------------------
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct CodeInfo {
     pub filepath_dependencies: Vec<String>,
-}
-
-pub struct CodeInfoSets {
-    pub lang: String,
-    pub src_code_infos: Vec<CodeInfo>,
-    pub test_code_infos: Vec<CodeInfo>,
 }
 
 // ------------------------------------
@@ -38,7 +86,7 @@ pub struct CodeInfoSets {
 #[derive(Debug, serde::Deserialize, serde::Serialize)]
 pub struct SourceSets {
     // TODO: Rename to SourcePathSets
-    pub lang: String,
+    pub lang: Lang,
     pub src_paths: Vec<String>,
     pub test_paths: Vec<String>,
 }
