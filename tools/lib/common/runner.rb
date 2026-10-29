@@ -1,3 +1,5 @@
+require 'open3'
+
 module Runner
   class Result
     attr_reader :stdout, :stderr, :exit_code, :timedout
@@ -10,56 +12,56 @@ module Runner
     end
   end
 
+  PIPE_CLOSE_WAIT_SEC = 1
+
   class << self
+    # Run command (argv array, without shell) and wait for it at most `timeout` seconds.
+    # On timeout, the whole process group is killed and exit_code is nil.
+    # stdout and stderr are always String.
     def join_spawn_with_timeout(command, timeout)
-      # p command
-      result_stdout = nil
-      result_stderr = nil
-      result_code = nil
-      result_timedout = false
+      # [cmd, argv0] form prevents a single-element command from being interpreted by shell
+      Open3.popen3([command[0], command[0]], *command[1..], pgroup: true) do |stdin, stdout, stderr, wait_thr|
+        stdin.close
+        # Read both pipes concurrently to avoid deadlock when one of them is full
+        stdout_reader = Thread.new { read_all(stdout) }
+        stderr_reader = Thread.new { read_all(stderr) }
 
-      # stdout_rx, stdout_tx = IO.pipe
-      stderr_rx, stderr_tx = IO.pipe
+        timedout = wait_thr.join(timeout).nil?
+        # Kill descendants remaining in the process group (and the command itself on timeout)
+        kill_process_group(wait_thr.pid)
+        status = wait_thr.value
 
-      # spawn(command, :out => stdout_tx, :err => stderr_tx)
-      stdout_rx = IO.popen(command, err: stderr_tx)
-      pid = stdout_rx.pid
-      # stdout_tx.close
-      stderr_tx.close
+        # Descendants which left the process group (e.g. setsid) may keep the pipes open
+        unless [stdout_reader, stderr_reader].all? { |t| t.join(PIPE_CLOSE_WAIT_SEC) }
+          stdout.close
+          stderr.close
+        end
 
-      thread1 = nil
-      thread2 = nil
+        result_stderr = stderr_reader.value
+        result_stderr += "\n(terminated by signal #{Signal.signame(status.termsig)})" if status.signaled? && !timedout
 
-      thread1 = Thread.new do
-        # read stdout and stderr
-        result_stdout = stdout_rx.read
-        result_stderr = stderr_rx.read
-        Process.waitpid(pid)
-        result_code = $?.exitstatus
-        stdout_rx.close
-        stderr_rx.close
-        thread1 = nil
-        thread2.kill if thread2
+        Result.new(stdout_reader.value, result_stderr, timedout ? nil : status.exitstatus, timedout)
       end
+    rescue SystemCallError => e
+      # e.g. command not found
+      Result.new('', "#{e.class}: #{e.message}", nil, false)
+    end
 
-      thread2 = Thread.new do
-        sleep timeout
-        Process.kill('KILL', pid)
-        result_timedout = true
-        thread2 = nil
-        thread1.kill if thread1
-      end
+    private
 
-      [thread1, thread2].each do |t|
-        t.join if t
-      end
+    # Read until EOF. If the pipe is closed by another thread, return the data read so far.
+    def read_all(io)
+      buf = +''
+      loop { buf << io.readpartial(65_536) }
+    rescue EOFError, IOError
+      # readpartial returns BINARY; output of compilers is assumed to be UTF-8
+      buf.force_encoding(Encoding::UTF_8)
+    end
 
-      Result.new(result_stdout, result_stderr, result_code, result_timedout)
+    def kill_process_group(pgid)
+      Process.kill('KILL', -pgid)
+    rescue Errno::ESRCH
+      # already exited
     end
   end
 end
-
-# test
-
-# res = Runner::join_spawn_with_timeout(['sleep', "5"], 2)
-# p res.stdout, res.stderr, res.exit_code, res

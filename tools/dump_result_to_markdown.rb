@@ -63,13 +63,13 @@ def dump_result(results_list)
     next if ok
 
     puts "    - timedout: #{timedout ? 'YES' : 'NO'}"
-    if stdout.empty?
+    if stdout.to_s.empty?
       puts '    - stdout: (empty)'
     else
       puts '    - stdout:'
       print_with_indent("```\n#{stdout}\n```", 6)
     end
-    if stderr.empty?
+    if stderr.to_s.empty?
       puts '    - stderr: (empty)'
     else
       puts '    - stderr: '
@@ -85,8 +85,6 @@ puts ''
 
 puts "## Failed\n"
 
-num_test_failed = 0
-
 results_json.each do |result|
   lang = result['lang']
   src_failed_results = result['src_failed_results']
@@ -94,16 +92,13 @@ results_json.each do |result|
 
   puts "### #{lang}\n"
 
-  next if src_failed_results.empty?
-
-  puts "#### Build results\n"
-  src_failed_results.each do |src_result|
-    dump_result(src_result)
-    num_test_failed += 1 if src_result['results'].any? { |r| !r['ok'] }
+  unless src_failed_results.empty?
+    puts "#### Build results\n"
+    src_failed_results.each { |src_result| dump_result(src_result) }
   end
-  test_failed_results.each do |test_result|
-    dump_result(test_result)
-    num_test_failed += 1 if test_result['results'].any? { |r| !r['ok'] }
+  unless test_failed_results.empty?
+    puts "#### Test results\n"
+    test_failed_results.each { |test_result| dump_result(test_result) }
   end
 end
 
@@ -116,15 +111,19 @@ results_json.each do |result|
 
   puts "### #{lang}\n"
 
-  next if src_passed_results.empty?
+  unless src_passed_results.empty?
+    puts "#### Build results\n"
+    src_passed_results.each { |src_result| dump_result(src_result) }
+  end
+  unless test_passed_results.empty?
+    puts "#### Test results\n"
+    test_passed_results.each { |test_result| dump_result(test_result) }
+  end
+end
 
-  puts "#### Build results\n"
-  src_passed_results.each do |src_result|
-    dump_result(src_result)
-  end
-  test_passed_results.each do |test_result|
-    dump_result(test_result)
-  end
+# Count failures independently of the output above
+num_test_failed = results_json.sum do |result|
+  result['src_failed_results'].size + result['test_failed_results'].size
 end
 
 abort "Some tests failed: count = #{num_test_failed}" if @check_test_fail && num_test_failed > 0

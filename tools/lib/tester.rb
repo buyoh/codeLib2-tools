@@ -5,6 +5,7 @@ module Tester
     class << self
       TIMEOUT_BUILD_SEC = 3
       TIMEOUT_RUN_SEC = 10
+      TIMEOUT_FORMAT_SEC = 10
       def default_options(basedir)
         ['g++', '-I', basedir, '-lm', '-Wall', '-Wno-comment']
       end
@@ -15,9 +16,7 @@ module Tester
         std_list.each do |std|
           key = std
           cmd = default_options(basedir) + ['-fsyntax-only', '-std=' + std, input_src_path]
-          # TODO: ?
-          cmd2 = ['bash', '-l', '-c', cmd * ' ']
-          result = Runner.join_spawn_with_timeout(cmd2, TIMEOUT_BUILD_SEC)
+          result = Runner.join_spawn_with_timeout(cmd, TIMEOUT_BUILD_SEC)
 
           results[key] = {
             ok: result.exit_code == 0,
@@ -33,9 +32,7 @@ module Tester
         results = {}
         std = 'c++20'
         cmd = default_options(basedir) + ['-std=' + std, input_src_path, '-o', tempdir + '/a.out']
-        # TODO: ?
-        cmd2 = ['bash', '-l', '-c', cmd * ' ']
-        result_compile = Runner.join_spawn_with_timeout(cmd2, TIMEOUT_BUILD_SEC)
+        result_compile = Runner.join_spawn_with_timeout(cmd, TIMEOUT_BUILD_SEC)
 
         results['compile'] = {
           ok: result_compile.exit_code == 0,
@@ -62,22 +59,15 @@ module Tester
       end
 
       def refactor_code(path, inplace)
-        ok = true
-        if inplace
-          ok = system("clang-format -i -style=file #{path}")
-        else
-          diff = `bash -c "diff <( clang-format -style=file #{path} ) #{path}"`
-          # TODO: What is this? (Copied from old code)
-          unless diff =~ /^\s*$/
-            ok = false
-            puts "clang-format assertion: #{path}"
-            puts 'diff...'
-            puts diff
-            puts ''
-          end
-        end
-        # Always return true
-        ok
+        cmd = ['clang-format', '-style=file']
+        cmd += inplace ? ['-i'] : ['--dry-run', '-Werror']
+        result = Runner.join_spawn_with_timeout(cmd + [path], TIMEOUT_FORMAT_SEC)
+        return true if result.exit_code == 0
+
+        puts "clang-format assertion: #{path}"
+        puts result.stderr
+        puts ''
+        false
       end
     end
   end
