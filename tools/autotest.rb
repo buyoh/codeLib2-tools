@@ -37,19 +37,25 @@ collection = JSON.parse(File.read(@collection_path))
 @basedir ||= collection['base_path']
 
 def to_result_entries(result)
-  result.map do |k, v|
-    { 'option' => k, 'ok' => v[:ok], 'timedout' => v[:timedout], 'stdout' => v[:stdout], 'stderr' => v[:stderr] }
-  end
+  result.map { |k, v| { 'option' => k, **v.transform_keys(&:to_s) } }
 end
 
 # Collect jobs
 Job = Struct.new(:lang, :type, :path, :tester)
 jobs = []
+skipped_results = []
 collection['source_sets'].each do |source_set|
   lang = source_set['lang']
   tester = Tester.select_tester(lang)
   unless tester
     @logger.warn("Unsupported language: #{lang}")
+    skipped_results << {
+      'lang' => lang,
+      'skipped' => true,
+      'skipped_paths' => source_set['src_paths'] + source_set['test_paths'],
+      'src_results' => [],
+      'test_results' => []
+    }
     next
   end
   source_set['src_paths'].each { |path| jobs << Job.new(lang, 'check_compile', path, tester) }
@@ -79,7 +85,7 @@ workers = Array.new([@jobs, jobs.size].min) do |worker_id|
         rescue StandardError => e
           # Record as a failure not to lose other results
           @logger.error("#{job.type} #{job.path}: #{e.message}")
-          { 'exception' => { ok: false, timedout: false, stdout: '', stderr: e.full_message(highlight: false) } }
+          { 'exception' => Runner::Result.new('', e.full_message(highlight: false), nil, false).to_h }
         end
       job_results[i] = { 'path' => job.path, 'type' => job.type, 'results' => to_result_entries(result) }
     end
@@ -96,4 +102,4 @@ total_results = jobs.each_with_index.group_by { |job, _i| job.lang }.map do |lan
   }
 end
 
-File.write(@output_result_path, JSON.generate(total_results))
+File.write(@output_result_path, JSON.generate(total_results + skipped_results))

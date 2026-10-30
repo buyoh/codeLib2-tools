@@ -128,8 +128,3 @@ pub fn gather_collection(base_path: &str) -> Result<(Collection, Vec<String>), S
     };
     Ok((collection, warnings))
 }
-
-pub fn gather_commit_info(_filepath: &str) -> Result<Vec<crate::codelib::Commit>, String> {
-    // TODO: implement
-    Ok(Vec::new())
-}

@@ -2,7 +2,7 @@
 require 'json'
 require 'logger'
 require 'optparse'
-require_relative 'lib/tester'
+require_relative 'lib/formatter'
 
 # require_relative './lib/collector/collector'
 # require_relative './lib/code/codeparser'
@@ -28,20 +28,14 @@ success = true
 # TODO: 並列化。並列化するときは、tmpdirもそれぞれのスレッドで作成する必要がある
 collection['source_sets'].each do |source_set|
   lang = source_set['lang']
-  tester = Tester.select_tester(lang)
-  unless tester
+  formatter = Formatter.select_formatter(lang)
+  unless formatter
     @logger.warn("Unsupported language: #{lang}")
     next
   end
 
-  source_set['src_paths'].each do |src_path|
-    true_src_path = File.join(@basedir, src_path)
-    success &= tester.refactor_code(true_src_path, @inplace)
-  end
-
-  source_set['test_paths'].each do |test_path|
-    true_test_path = File.join(@basedir, test_path)
-    success &= tester.refactor_code(true_test_path, @inplace)
+  (source_set['src_paths'] + source_set['test_paths']).each do |path|
+    success &= formatter.format(File.join(@basedir, path), @inplace)
   end
 end
 

@@ -70,6 +70,18 @@ class DumpResultToMarkdownTest < Minitest::Test
     assert_includes passed_section, '/test/a.cpp'
   end
 
+  def test_skipped_language
+    results = [{ 'lang' => 'cpp',
+                 'src_results' => [result('/src/a.hpp', 'check_compile', [true])],
+                 'test_results' => [] },
+               { 'lang' => 'go', 'skipped' => true, 'skipped_paths' => ['/src/go/a.go'],
+                 'src_results' => [], 'test_results' => [] }]
+    out, _err, status = run_dump(results, '--check-test-fail')
+    assert status.success?
+    assert_includes out.split('## Skipped').last, 'go: 1 files'
+    refute_includes out.split('## Skipped').first, '### go'
+  end
+
   def test_nil_output_does_not_crash
     results = [{ 'lang' => 'cpp',
                  'src_results' => [result('/src/a.hpp', 'check_compile', [false], stdout: nil, stderr: nil)],

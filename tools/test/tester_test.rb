@@ -10,8 +10,6 @@ class TesterCppTest < Minitest::Test
     Dir.mkdir(@src_dir)
     @work_dir = File.join(@dir, 'tmp $(touch injected)')
     Dir.mkdir(@work_dir)
-    # Fix the style regardless of .clang-format in ancestor directories
-    File.write(File.join(@src_dir, '.clang-format'), "BasedOnStyle: LLVM\n")
   end
 
   def require_command(name)
@@ -67,24 +65,5 @@ class TesterCppTest < Minitest::Test
     results = Tester::Cpp.run_test(path, @src_dir, @work_dir)
     assert results['compile'][:ok]
     refute results['run'][:ok]
-  end
-
-  def test_refactor_code_check_mode
-    require_command('clang-format')
-    formatted = write_src('ok $(touch injected).cpp', "int main() { return 0; }\n")
-    unformatted = write_src('ng.cpp', "int   main(  ){return 0;}\n")
-    assert Tester::Cpp.refactor_code(formatted, false)
-    out, = capture_io { refute Tester::Cpp.refactor_code(unformatted, false) }
-    assert_match(/clang-format assertion/, out)
-    assert_equal "int   main(  ){return 0;}\n", File.read(unformatted)
-    assert_not_injected
-  end
-
-  def test_refactor_code_inplace
-    require_command('clang-format')
-    path = write_src('ng $(touch injected).cpp', "int   main(  ){return 0;}\n")
-    assert Tester::Cpp.refactor_code(path, true)
-    assert_equal "int main() { return 0; }\n", File.read(path)
-    assert_not_injected
   end
 end

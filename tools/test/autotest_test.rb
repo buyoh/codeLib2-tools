@@ -44,13 +44,15 @@ class AutotestTest < Minitest::Test
       'base_path' => @dir,
       'source_sets' => [
         { 'lang' => 'cpp', 'src_paths' => src_paths, 'test_paths' => test_paths },
-        { 'lang' => 'go', 'src_paths' => ['/src/go/a.go'], 'test_paths' => [] }
+        { 'lang' => 'go', 'src_paths' => ['/src/go/a.go'], 'test_paths' => ['/test/go/a.go'] }
       ]
     }
 
     results = run_autotest(collection, '--jobs', '3', '--tempdir', File.join(@dir, 'tmp'))
 
-    assert_equal ['cpp'], results.map { |r| r['lang'] }
+    assert_equal %w[cpp go], results.map { |r| r['lang'] }
+    assert_equal true, results[1]['skipped']
+    assert_equal ['/src/go/a.go', '/test/go/a.go'], results[1]['skipped_paths']
     cpp = results[0]
     assert_equal src_paths, cpp['src_results'].map { |r| r['path'] }
     assert_equal test_paths, cpp['test_results'].map { |r| r['path'] }

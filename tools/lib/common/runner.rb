@@ -10,6 +10,14 @@ module Runner
       @exit_code = exit_code
       @timedout = timedout
     end
+
+    def ok?
+      @exit_code == 0
+    end
+
+    def to_h
+      { ok: ok?, timedout: @timedout, stdout: @stdout, stderr: @stderr }
+    end
   end
 
   PIPE_CLOSE_WAIT_SEC = 1

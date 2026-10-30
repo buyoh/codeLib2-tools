@@ -5,7 +5,6 @@ edition = "2021"
 rust-version = "1.80"
 
 [dependencies]
-chrono = "0.4.38"
 clap = { version = "4.5.4", features = ["derive"] }
 regex = "1.10.4"
 serde = { version = "1.0.203", features = ["derive"] }

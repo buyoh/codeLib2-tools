@@ -11,7 +11,6 @@ pub use codelib::{Article, Collection, Commit, Lang, SourceSets};
 use parser::{parse_code_info, parse_document};
 use relation_solver::{solve_tested_by, CodeNode};
 pub use repo_collector::gather_collection;
-// use repo_collector::gather_commit_info;
 
 #[derive(Debug, Default)]
 pub struct GatherResult {

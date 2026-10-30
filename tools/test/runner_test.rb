@@ -11,6 +11,13 @@ class RunnerTest < Minitest::Test
     refute result.timedout
   end
 
+  def test_to_h
+    assert_equal({ ok: true, timedout: false, stdout: "o\n", stderr: '' },
+                 Runner.join_spawn_with_timeout(['echo', 'o'], 5).to_h)
+    assert_equal({ ok: false, timedout: false, stdout: '', stderr: '' },
+                 Runner.join_spawn_with_timeout(['false'], 5).to_h)
+  end
+
   def test_output_encoding_is_utf8
     result = Runner.join_spawn_with_timeout(['printf', "\u2018x\u2019"], 5)
     assert_equal Encoding::UTF_8, result.stdout.encoding

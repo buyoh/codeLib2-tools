@@ -15,7 +15,7 @@ end
 
 # -----------------------------------------------------------------------------
 
-results_json = JSON.parse(File.read(@result_path))
+skipped_results, results_json = JSON.parse(File.read(@result_path)).partition { |result| result['skipped'] }
 
 results_json = results_json.map do |result|
   lang = result['lang']
@@ -119,6 +119,12 @@ results_json.each do |result|
     puts "#### Test results\n"
     test_passed_results.each { |test_result| dump_result(test_result) }
   end
+end
+
+puts "## Skipped\n"
+
+skipped_results.each do |result|
+  puts "- #{result['lang']}: #{result['skipped_paths'].size} files (unsupported language)"
 end
 
 # Count failures independently of the output above
